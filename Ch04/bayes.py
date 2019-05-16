@@ -35,6 +35,7 @@ def trainNB0(trainMatrix,trainCategory):
     pAbusive = sum(trainCategory)/float(numTrainDocs)
     p0Num = ones(numWords); p1Num = ones(numWords)      #change to ones() 
     p0Denom = 2.0; p1Denom = 2.0                        #change to 2.0
+    # p0Denom = 0; p1Denom =0                       
     for i in range(numTrainDocs):
         if trainCategory[i] == 1:
             p1Num += trainMatrix[i]
@@ -44,9 +45,12 @@ def trainNB0(trainMatrix,trainCategory):
             p0Denom += sum(trainMatrix[i])
     p1Vect = log(p1Num/p1Denom)          #change to log()
     p0Vect = log(p0Num/p0Denom)          #change to log()
+    # p1Vect = p1Num/p1Denom         
+    # p0Vect = p0Num/p0Denom         
     return p0Vect,p1Vect,pAbusive
 
 def classifyNB(vec2Classify, p0Vec, p1Vec, pClass1):
+    # print(vec2Classify , p1Vec,vec2Classify , p0Vec)
     p1 = sum(vec2Classify * p1Vec) + log(pClass1)    #element-wise mult
     p0 = sum(vec2Classify * p0Vec) + log(1.0 - pClass1)
     if p1 > p0:
@@ -68,10 +72,11 @@ def testingNB():
     for postinDoc in listOPosts:
         trainMat.append(setOfWords2Vec(myVocabList, postinDoc))
     p0V,p1V,pAb = trainNB0(array(trainMat),array(listClasses))
+    # print(p0V,p1V,pAb)
     testEntry = ['love', 'my', 'dalmation']
     thisDoc = array(setOfWords2Vec(myVocabList, testEntry))
     print(testEntry,'classified as: ',classifyNB(thisDoc,p0V,p1V,pAb))
-    testEntry = ['stupid', 'garbage']
+    testEntry = ['stupid','my','garbage']
     thisDoc = array(setOfWords2Vec(myVocabList, testEntry))
     print(testEntry,'classified as: ',classifyNB(thisDoc,p0V,p1V,pAb))
 
@@ -83,16 +88,16 @@ def textParse(bigString):    #input is big string, #output is word list
 def spamTest():
     docList=[]; classList = []; fullText =[]
     for i in range(1,26):
-        wordList = textParse(open('email/spam/%d.txt' % i).read())
+        wordList = textParse(open('email/spam/%d.txt' % i,encoding='gb18030', errors='ignore').read())
         docList.append(wordList)
         fullText.extend(wordList)
         classList.append(1)
-        wordList = textParse(open('email/ham/%d.txt' % i).read())
+        wordList = textParse(open('email/ham/%d.txt' % i,encoding='gb18030', errors='ignore').read())
         docList.append(wordList)
         fullText.extend(wordList)
         classList.append(0)
     vocabList = createVocabList(docList)#create vocabulary
-    trainingSet = range(50); testSet=[]           #create test set
+    trainingSet = list(range(50)); testSet=[]           #create test set
     for i in range(10):
         randIndex = int(random.uniform(0,len(trainingSet)))
         testSet.append(trainingSet[randIndex])
@@ -172,7 +177,5 @@ def getTopWords(ny,sf):
 
 
 if __name__ == '__main__':
-    postingList,classVec=loadDataSet()
-    vocablist=createVocabList(postingList)
-    normlist=setOfWords2Vec(vocablist,postingList[0])
-    print(normlist)
+    # testingNB()
+    spamTest()
