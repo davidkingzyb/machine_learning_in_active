@@ -15,14 +15,22 @@ from numpy import *
 import operator
 from os import listdir
 
+
 def classify0(inX, dataSet, labels, k):
+    """
+    inX [num,...] test data array
+    dataSet [[num,...],[num,...],...] train data map
+    labels [str,str,...] train data label
+    k int count range
+    """
     dataSetSize = dataSet.shape[0]
-    diffMat = tile(inX, (dataSetSize,1)) - dataSet
-    sqDiffMat = diffMat**2
-    sqDistances = sqDiffMat.sum(axis=1)
-    distances = sqDistances**0.5
-    sortedDistIndicies = distances.argsort()     
-    classCount={}          
+    diffMat = tile(inX, (dataSetSize,1)) - dataSet # test to [test,...] then [[test-train],...] 
+    sqDiffMat = diffMat**2 # [[(test-train)**2]]
+    sqDistances = sqDiffMat.sum(axis=1) # [sum([(test-train)**2]),...]
+    distances = sqDistances**0.5 # useless?
+    sortedDistIndicies = distances.argsort() # sort distance array [index,...]
+    # find k nearist train data count label return max
+    classCount={} 
     for i in range(k):
         voteIlabel = labels[sortedDistIndicies[i]]
         classCount[voteIlabel] = classCount.get(voteIlabel,0) + 1
@@ -59,6 +67,9 @@ def autoNorm(dataSet):
     normDataSet = dataSet - tile(minVals, (m,1))
     normDataSet = normDataSet/tile(ranges, (m,1))   #element wise divide
     return normDataSet, ranges, minVals
+
+def normVec(dataVec,minVals,ranges):
+    return (dataVec-minVals)/ranges
    
 def datingClassTest():
     hoRatio = 0.50      #hold out 10%
@@ -111,7 +122,8 @@ def handwritingClassTest():
 if __name__ == '__main__':
     ds,labels=createDataSet()
     normDataSet, ranges, minVals=autoNorm(ds)
-    nearlabel=classify0([0.3,0.2],normDataSet,labels,1)
+    normtest=normVec([0.3,0.2],minVals,ranges)
+    nearlabel=classify0(normtest,normDataSet,labels,1)
     print(nearlabel)
     
     # handwritingClassTest()

@@ -46,10 +46,10 @@ def createDataSet2():
     labels=['age','prescript','astigmatic','tearRate']
     return dataSet,labels
 
-def calcShannonEnt(dataSet):
-    numEntries = len(dataSet)
+def calcShannonEnt(dataMat):
+    numEntries = len(dataMat)
     labelCounts = {}
-    for featVec in dataSet: #the the number of unique elements and their occurance
+    for featVec in dataMat: #the the number of unique elements and their occurance
         currentLabel = featVec[-1]
         if currentLabel not in labelCounts.keys(): labelCounts[currentLabel] = 0
         labelCounts[currentLabel] += 1
@@ -57,34 +57,34 @@ def calcShannonEnt(dataSet):
     for key in labelCounts:
         prob = float(labelCounts[key])/numEntries
         shannonEnt -= prob * log(prob,2) #log base 2
-    return shannonEnt
+    return shannonEnt # -sum(log2(prob)*prob) average infomation
     
-def splitDataSet(dataSet, axis, value):
-    retDataSet = []
-    for featVec in dataSet:
+def splitDataSet(dataMat, axis, value):
+    resultDataMat = []
+    for featVec in dataMat:
         if featVec[axis] == value:
             reducedFeatVec = featVec[:axis]     #chop out axis used for splitting
             reducedFeatVec.extend(featVec[axis+1:])
-            retDataSet.append(reducedFeatVec)
-    return retDataSet
+            resultDataMat.append(reducedFeatVec)
+    return resultDataMat
     
-def chooseBestFeatureToSplit(dataSet):
-    numFeatures = len(dataSet[0]) - 1      #the last column is used for the labels
-    baseEntropy = calcShannonEnt(dataSet)
+def chooseBestFeatureToSplit(dataMat):
+    numFeatures = len(dataMat[0]) - 1      #the last column is used for the class
+    baseEntropy = calcShannonEnt(dataMat)
     bestInfoGain = 0.0; bestFeature = -1
     for i in range(numFeatures):        #iterate over all the features
-        featList = [example[i] for example in dataSet]#create a list of all the examples of this feature
-        uniqueVals = set(featList)       #get a set of unique values
+        featList = [example[i] for example in dataMat] # [feature_i,...]
+        uniqueVals = set(featList) # {feature_i_a,...} featurn_i 
         newEntropy = 0.0
         for value in uniqueVals:
-            subDataSet = splitDataSet(dataSet, i, value)
-            prob = len(subDataSet)/float(len(dataSet))
-            newEntropy += prob * calcShannonEnt(subDataSet) #small better    
-        infoGain = baseEntropy - newEntropy     #calculate the info gain; ie reduction in entropy
-        if (infoGain > bestInfoGain):       #compare this to the best gain so far
-            bestInfoGain = infoGain         #if better than current best, set to best
+            subDataMat = splitDataSet(dataMat, i, value) # featurn_i_a => [[feature_except_i,...,cls],...]
+            prob = len(subDataMat)/float(len(dataMat))
+            newEntropy += prob * calcShannonEnt(subDataMat) # smaller better    
+        infoGain = baseEntropy - newEntropy     # calculate the info gain; ie reduction in entropy
+        if (infoGain > bestInfoGain):       
+            bestInfoGain = infoGain         
             bestFeature = i
-    return bestFeature                      #returns an integer
+    return bestFeature                      # returns best feature index
 
 def majorityCnt(classList):
     classCount={}
@@ -95,39 +95,45 @@ def majorityCnt(classList):
     print('sortedClassCount',sortedClassCount)
     return sortedClassCount[0][0]
 
-def createTree(dataSet,labels):
-    classList = [example[-1] for example in dataSet]
-    # print('classList',classList)
+def createTree(dataMat,labels):
+    """
+    dataMat [[feature,...,cls],...]
+    labels [feature_name,...] featurn label
+    """
+    classList = [example[-1] for example in dataMat] # class array [cls,...]
+    # stop splitting when all of the classes are equal
     if classList.count(classList[0]) == len(classList): 
-        return classList[0]#stop splitting when all of the classes are equal
-    if len(dataSet[0]) == 1: #stop splitting when there are no more features in dataSet
+        return classList[0]
+    # stop splitting when there are no more features in dataMat
+    if len(dataMat[0]) == 1: 
         return majorityCnt(classList)
-    bestFeat = chooseBestFeatureToSplit(dataSet)
+    bestFeat = chooseBestFeatureToSplit(dataMat)
     bestFeatLabel = labels[bestFeat]
-    myTree = {bestFeatLabel:{}}
+    theTree = {bestFeatLabel:{}}
     del(labels[bestFeat])
-    featValues = [example[bestFeat] for example in dataSet]
+    # subtree
+    featValues = [example[bestFeat] for example in dataMat]
     uniqueVals = set(featValues)
     for value in uniqueVals:
         subLabels = labels[:]       #copy all of labels, so trees don't mess up existing labels
-        myTree[bestFeatLabel][value] = createTree(splitDataSet(dataSet, bestFeat, value),subLabels)
-    return myTree                            
+        theTree[bestFeatLabel][value] = createTree(splitDataSet(dataMat, bestFeat, value),subLabels)
+    return theTree # {feature_label_i:{feature_i_a:subtree|cls,...}}                      
     
-def classify(inputTree,featLabels,testVec):
-    firstStr = list(inputTree.keys())[0]
-    secondDict = inputTree[firstStr]
-    featIndex = featLabels.index(firstStr)
-    key = testVec[featIndex]
+def classify(tree,featureLabel,targetVec):
+    firstStr = list(tree.keys())[0]
+    secondDict = tree[firstStr]
+    featIndex = featureLabel.index(firstStr)
+    key = targetVec[featIndex]
     valueOfFeat = secondDict[key]
     if isinstance(valueOfFeat, dict): 
-        classLabel = classify(valueOfFeat, featLabels, testVec)
+        classLabel = classify(valueOfFeat, featureLabel, targetVec)
     else: classLabel = valueOfFeat
     return classLabel
 
-def storeTree(inputTree,filename):
+def storeTree(tree,filename):
     import pickle
     fw = open(filename,'w')
-    pickle.dump(inputTree,fw)
+    pickle.dump(tree,fw)
     fw.close()
     
 def grabTree(filename):
