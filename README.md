@@ -150,6 +150,10 @@ def classify(tree,featureLabel,targetVec):
 
 ## Naive Bayes
 
+```
+P(A|B) = P(B|A)P(A)/P(B)
+```
+
 1. creat dictionary (a unique word vector)
     - calculate most frequence word and delect from dictionary
     - or remove from stop word list
