@@ -15,42 +15,42 @@ def loadDataSet():
     classVec = [0,1,0,1,0,1]    #1 is abusive, 0 not
     return postingList,classVec
                  
-def createVocabList(dataSet):
+def createDictionary(dataMat):
     vocabSet = set([])  #create empty set
-    for document in dataSet:
+    for document in dataMat:
         vocabSet = vocabSet | set(document) #union of the two sets
     return list(vocabSet)
 
-def setOfWords2Vec(vocabList, inputSet):
-    returnVec = [0]*len(vocabList)
-    for word in inputSet:
-        if word in vocabList:
-            returnVec[vocabList.index(word)] = 1
+def wordToVec(dictionary, wordVec):
+    returnVec = [0]*len(dictionary)
+    for word in wordVec:
+        if word in dictionary:
+            returnVec[dictionary.index(word)] = 1
         else: print("the word: %s is not in my Vocabulary!" % word)
     return returnVec
 
-def trainNB0(trainMatrix,trainCategory):
-    numTrainDocs = len(trainMatrix)
-    numWords = len(trainMatrix[0])
-    pAbusive = sum(trainCategory)/float(numTrainDocs)
+def trainNaiveBayes(trainMat,labels):
+    numTrainDocs = len(trainMat)
+    numWords = len(trainMat[0])
+    pAbusive = sum(labels)/float(numTrainDocs)
     p0Num = ones(numWords); p1Num = ones(numWords)      #change to ones() 
     p0Denom = 2.0; p1Denom = 2.0                        #change to 2.0
     # p0Denom = 0; p1Denom =0                       
     for i in range(numTrainDocs):
-        if trainCategory[i] == 1:
-            p1Num += trainMatrix[i]
-            p1Denom += sum(trainMatrix[i])
+        if labels[i] == 1:
+            p1Num += trainMat[i]
+            p1Denom += sum(trainMat[i])
         else:
-            p0Num += trainMatrix[i]
-            p0Denom += sum(trainMatrix[i])
-    p1Vect = log(p1Num/p1Denom)          #change to log()
-    p0Vect = log(p0Num/p0Denom)          #change to log()
-    # p1Vect = p1Num/p1Denom         
-    # p0Vect = p0Num/p0Denom         
+            p0Num += trainMat[i]
+            p0Denom += sum(trainMat[i])
+    # p1Vect = log(p1Num/p1Denom)          #change to log()
+    # p0Vect = log(p0Num/p0Denom)          #change to log()
+    p1Vect = p1Num/p1Denom         
+    p0Vect = p0Num/p0Denom         
     return p0Vect,p1Vect,pAbusive
 
 def classifyNB(vec2Classify, p0Vec, p1Vec, pClass1):
-    # print(vec2Classify , p1Vec,vec2Classify , p0Vec)
+    # print(vec2Classify , p0Vec, p1Vec,pClass1)
     p1 = sum(vec2Classify * p1Vec) + log(pClass1)    #element-wise mult
     p0 = sum(vec2Classify * p0Vec) + log(1.0 - pClass1)
     if p1 > p0:
@@ -67,17 +67,17 @@ def bagOfWords2VecMN(vocabList, inputSet):
 
 def testingNB():
     listOPosts,listClasses = loadDataSet()
-    myVocabList = createVocabList(listOPosts)
+    myVocabList = createDictionary(listOPosts)
     trainMat=[]
     for postinDoc in listOPosts:
-        trainMat.append(setOfWords2Vec(myVocabList, postinDoc))
-    p0V,p1V,pAb = trainNB0(array(trainMat),array(listClasses))
+        trainMat.append(wordToVec(myVocabList, postinDoc))
+    p0V,p1V,pAb = trainNaiveBayes(array(trainMat),array(listClasses))
     # print(p0V,p1V,pAb)
     testEntry = ['love', 'my', 'dalmation']
-    thisDoc = array(setOfWords2Vec(myVocabList, testEntry))
+    thisDoc = array(wordToVec(myVocabList, testEntry))
     print(testEntry,'classified as: ',classifyNB(thisDoc,p0V,p1V,pAb))
     testEntry = ['stupid','my','garbage']
-    thisDoc = array(setOfWords2Vec(myVocabList, testEntry))
+    thisDoc = array(wordToVec(myVocabList, testEntry))
     print(testEntry,'classified as: ',classifyNB(thisDoc,p0V,p1V,pAb))
 
 def textParse(bigString):    #input is big string, #output is word list
@@ -96,17 +96,23 @@ def spamTest():
         docList.append(wordList)
         fullText.extend(wordList)
         classList.append(0)
-    vocabList = createVocabList(docList)#create vocabulary
+    vocabList = createDictionary(docList)#create vocabulary
+    # 
+    top30Words = calcMostFreq(vocabList,fullText)   #remove top 30 words
+    print(top30Words)
+    for pairW in top30Words:
+        if pairW[0] in vocabList: vocabList.remove(pairW[0])
+    # random trainVec other is targetVec
     trainingSet = list(range(50)); testSet=[]           #create test set
     for i in range(10):
         randIndex = int(random.uniform(0,len(trainingSet)))
         testSet.append(trainingSet[randIndex])
         del(trainingSet[randIndex])  
     trainMat=[]; trainClasses = []
-    for docIndex in trainingSet:#train the classifier (get probs) trainNB0
+    for docIndex in trainingSet:#train the classifier (get probs) trainNaiveBayes
         trainMat.append(bagOfWords2VecMN(vocabList, docList[docIndex]))
         trainClasses.append(classList[docIndex])
-    p0V,p1V,pSpam = trainNB0(array(trainMat),array(trainClasses))
+    p0V,p1V,pSpam = trainNaiveBayes(array(trainMat),array(trainClasses))
     errorCount = 0
     for docIndex in testSet:        #classify the remaining items
         wordVector = bagOfWords2VecMN(vocabList, docList[docIndex])
@@ -121,8 +127,8 @@ def calcMostFreq(vocabList,fullText):
     freqDict = {}
     for token in vocabList:
         freqDict[token]=fullText.count(token)
-    sortedFreq = sorted(freqDict.iteritems(), key=operator.itemgetter(1), reverse=True) 
-    return sortedFreq[:30]       
+    sortedFreq = sorted(freqDict.items(), key=operator.itemgetter(1), reverse=True) 
+    return sortedFreq[:9]       
 
 def localWords(feed1,feed0):
     import feedparser
@@ -137,8 +143,9 @@ def localWords(feed1,feed0):
         docList.append(wordList)
         fullText.extend(wordList)
         classList.append(0)
-    vocabList = createVocabList(docList)#create vocabulary
+    vocabList = createDictionary(docList)#create vocabulary
     top30Words = calcMostFreq(vocabList,fullText)   #remove top 30 words
+    print(top30Words)
     for pairW in top30Words:
         if pairW[0] in vocabList: vocabList.remove(pairW[0])
     trainingSet = range(2*minLen); testSet=[]           #create test set
@@ -147,10 +154,10 @@ def localWords(feed1,feed0):
         testSet.append(trainingSet[randIndex])
         del(trainingSet[randIndex])  
     trainMat=[]; trainClasses = []
-    for docIndex in trainingSet:#train the classifier (get probs) trainNB0
+    for docIndex in trainingSet:#train the classifier (get probs) trainNaiveBayes
         trainMat.append(bagOfWords2VecMN(vocabList, docList[docIndex]))
         trainClasses.append(classList[docIndex])
-    p0V,p1V,pSpam = trainNB0(array(trainMat),array(trainClasses))
+    p0V,p1V,pSpam = trainNaiveBayes(array(trainMat),array(trainClasses))
     errorCount = 0
     for docIndex in testSet:        #classify the remaining items
         wordVector = bagOfWords2VecMN(vocabList, docList[docIndex])

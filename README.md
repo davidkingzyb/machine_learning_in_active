@@ -148,3 +148,62 @@ def classify(tree,featureLabel,targetVec):
     return classLabel
 ```
 
+## Naive Bayes
+
+1. creat dictionary (a unique word vector)
+    - calculate most frequence word and delect from dictionary
+    - or remove from stop word list
+2. transform wordVec to dataVec 
+    - set-of-words model or bag-of-words model
+    - mark in or not at dictionary 
+    - dataVec to dataMat
+
+```py
+def createDictionary(wordMat):
+    vocabSet = set([])  #create empty set
+    for document in wordMat:
+        vocabSet = vocabSet | set(document) #union of the two sets
+    return list(vocabSet)
+
+def wordVecToDataVec(dictionary, wordVec):
+    returnVec = [0]*len(dictionary)
+    for word in wordVec:
+        if word in dictionary:
+            # returnVec[dictionary.index(word)] = 1
+            returnVec[dictionary.index(word)] += 1
+        else: print("the word: %s is not in my Vocabulary!" % word)
+    return returnVec    
+```
+
+3. train naive bayes 
+4. classify
+
+```py
+def trainNaiveBayes(trainMat,labels):
+    numTrainDocs = len(trainMat)
+    numWords = len(trainMat[0])
+    pClass1 = sum(labels)/float(numTrainDocs)
+    p0Num = ones(numWords); p1Num = ones(numWords)      #change to ones() 
+    p0Denom = 2.0; p1Denom = 2.0                        #change to 2.0
+    # p0Denom = 0; p1Denom =0                       
+    for i in range(numTrainDocs):
+        if labels[i] == 1:
+            p1Num += trainMat[i]
+            p1Denom += sum(trainMat[i])
+        else:
+            p0Num += trainMat[i]
+            p0Denom += sum(trainMat[i])
+    p1Vect = log(p1Num/p1Denom)          #change to log() for better distribution
+    p0Vect = log(p0Num/p0Denom)          
+    # p1Vect = p1Num/p1Denom         
+    # p0Vect = p0Num/p0Denom         
+    return p0Vect,p1Vect,pClass1
+
+def classifyNB(targetVec, p0Vec, p1Vec, pClass1):
+    p1 = sum(targetVec * p1Vec) + log(pClass1)    #element-wise mult
+    p0 = sum(targetVec * p0Vec) + log(1.0 - pClass1)
+    if p1 > p0:
+        return 1
+    else: 
+        return 0
+```
