@@ -211,3 +211,52 @@ def classifyNB(targetVec, p0Vec, p1Vec, pClass1):
     else: 
         return 0
 ```
+
+## Logistics Regres
+
+```
+sigmoid(inX)=1/(1+exp(-inX))
+
+weights=weights+alpha*error*dataMat.transpose()
+
+y=(-weights[0]-weights[1]*x)/weights[2]
+```
+
+1. calculate sigmoid result
+2. find error and new weight
+3. regres weight
+
+```py
+def sigmoid(inX):
+    return 1.0/(1+exp(-inX))
+
+def gradAscent(dataMatIn, classLabels):
+    dataMatrix = mat(dataMatIn)             #convert to NumPy matrix
+    labelMat = mat(classLabels).transpose() #convert to NumPy matrix
+    m,n = shape(dataMatrix)
+    alpha = 0.001
+    maxCycles = 500
+    weights = ones((n,1))
+    for k in range(maxCycles):              #heavy on matrix operations
+        h = sigmoid(dataMatrix*weights)     #matrix mult
+        error = (labelMat - h)              #vector subtraction
+        weights = weights + alpha * dataMatrix.transpose()* error #matrix mult
+    return weights
+
+# random optimized
+def stocGradAscent(dataMatrix, classLabels, numIter=150):
+    m,n = shape(dataMatrix)
+    weights = ones(n)   #initialize to all ones
+    for j in range(numIter):
+        dataIndex = list(range(m))
+        for i in range(m):
+            alpha = 4/(1.0+j+i)+0.0001    #apha decreases with iteration, does not 
+            randIndex = int(random.uniform(0,len(dataIndex)))#go to 0 because of the constant
+            h = sigmoid(sum(dataMatrix[randIndex]*weights))
+            error = classLabels[randIndex] - h
+            weights = weights + alpha * error * dataMatrix[randIndex]
+            del(dataIndex[randIndex])
+    return weights
+```
+
+

@@ -4,6 +4,7 @@ Logistic Regression Working Module
 @author: Peter
 '''
 from numpy import *
+import matplotlib.pyplot as plt
 
 def loadDataSet():
     dataMat = []; labelMat = []
@@ -15,6 +16,7 @@ def loadDataSet():
     return dataMat,labelMat
 
 def sigmoid(inX):
+    # print(inX)
     return 1.0/(1+exp(-inX))
 
 def gradAscent(dataMatIn, classLabels):
@@ -24,6 +26,9 @@ def gradAscent(dataMatIn, classLabels):
     alpha = 0.001
     maxCycles = 500
     weights = ones((n,1))
+    print('dataMatrix',dataMatrix)
+    print('weights',weights)
+    print('x',dataMatrix*weights)
     for k in range(maxCycles):              #heavy on matrix operations
         h = sigmoid(dataMatrix*weights)     #matrix mult
         error = (labelMat - h)              #vector subtraction
@@ -31,7 +36,6 @@ def gradAscent(dataMatIn, classLabels):
     return weights
 
 def plotBestFit(weights):
-    import matplotlib.pyplot as plt
     dataMat,labelMat=loadDataSet()
     dataArr = array(dataMat)
     n = shape(dataArr)[0] 
@@ -48,7 +52,7 @@ def plotBestFit(weights):
     ax.scatter(xcord2, ycord2, s=30, c='green')
     x = arange(-3.0, 3.0, 0.1)
     y = (-weights[0]-weights[1]*x)/weights[2]
-    ax.plot(x, y)
+    ax.plot(x, y.transpose())
     plt.xlabel('X1'); plt.ylabel('X2');
     plt.show()
 
@@ -59,6 +63,7 @@ def stocGradAscent0(dataMatrix, classLabels):
     for i in range(m):
         h = sigmoid(sum(dataMatrix[i]*weights))
         error = classLabels[i] - h
+        print('error',error)
         weights = weights + alpha * error * dataMatrix[i]
     return weights
 
@@ -66,7 +71,7 @@ def stocGradAscent1(dataMatrix, classLabels, numIter=150):
     m,n = shape(dataMatrix)
     weights = ones(n)   #initialize to all ones
     for j in range(numIter):
-        dataIndex = range(m)
+        dataIndex = list(range(m))
         for i in range(m):
             alpha = 4/(1.0+j+i)+0.0001    #apha decreases with iteration, does not 
             randIndex = int(random.uniform(0,len(dataIndex)))#go to 0 because of the constant
@@ -92,6 +97,7 @@ def colicTest():
         trainingSet.append(lineArr)
         trainingLabels.append(float(currLine[21]))
     trainWeights = stocGradAscent1(array(trainingSet), trainingLabels, 1000)
+    plotBestFit1(trainWeights,trainingSet,trainingLabels)
     errorCount = 0; numTestVec = 0.0
     for line in frTest.readlines():
         numTestVec += 1.0
@@ -102,12 +108,21 @@ def colicTest():
         if int(classifyVector(array(lineArr), trainWeights))!= int(currLine[21]):
             errorCount += 1
     errorRate = (float(errorCount)/numTestVec)
-    print "the error rate of this test is: %f" % errorRate
+    print("the error rate of this test is: %f" % errorRate)
     return errorRate
+
+
 
 def multiTest():
     numTests = 10; errorSum=0.0
     for k in range(numTests):
         errorSum += colicTest()
-    print "after %d iterations the average error rate is: %f" % (numTests, errorSum/float(numTests))
+    print("after %d iterations the average error rate is: %f" % (numTests, errorSum/float(numTests)))
         
+if __name__ == '__main__':
+    dataMat,label=loadDataSet()
+    print(dataMat,label)
+    weight=stocGradAscent1(array(dataMat),label)
+    print(weight)
+    plotBestFit(weight)
+    # colicTest()
