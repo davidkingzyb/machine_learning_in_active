@@ -121,8 +121,9 @@ def multiTest():
         
 if __name__ == '__main__':
     dataMat,label=loadDataSet()
-    print(dataMat,label)
+    # print(dataMat,label)
     weight=stocGradAscent1(array(dataMat),label)
-    print(weight)
-    plotBestFit(weight)
+    # print(weight)
+    print(classifyVector(dataMat[48],weight),label[48])
+    # plotBestFit(weight)
     # colicTest()
