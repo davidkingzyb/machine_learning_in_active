@@ -8,7 +8,7 @@ from numpy import *
 def loadDataSet(fileName, delim='\t'):
     fr = open(fileName)
     stringArr = [line.strip().split(delim) for line in fr.readlines()]
-    datArr = [map(float,line) for line in stringArr]
+    datArr = [list(map(float,line)) for line in stringArr]
     return mat(datArr)
 
 def pca(dataMat, topNfeat=9999999):
@@ -30,3 +30,9 @@ def replaceNanWithMean():
         meanVal = mean(datMat[nonzero(~isnan(datMat[:,i].A))[0],i]) #values that are not NaN (a number)
         datMat[nonzero(isnan(datMat[:,i].A))[0],i] = meanVal  #set NaN values to mean
     return datMat
+
+if __name__ == "__main__":
+    datamat=replaceNanWithMean()
+    # datamat=loadDataSet('testSet.txt','\t')
+    lowmat,reconmat=pca(datamat,10)
+    print(datamat)
