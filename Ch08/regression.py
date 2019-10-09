@@ -22,7 +22,7 @@ def standRegres(xArr,yArr):
     xMat = mat(xArr); yMat = mat(yArr).T
     xTx = xMat.T*xMat
     if linalg.det(xTx) == 0.0:
-        print "This matrix is singular, cannot do inverse"
+        print("This matrix is singular, cannot do inverse")
         return
     ws = xTx.I * (xMat.T*yMat)
     return ws
@@ -36,7 +36,7 @@ def lwlr(testPoint,xArr,yArr,k=1.0):
         weights[j,j] = exp(diffMat*diffMat.T/(-2.0*k**2))
     xTx = xMat.T * (weights * xMat)
     if linalg.det(xTx) == 0.0:
-        print "This matrix is singular, cannot do inverse"
+        print("This matrix is singular, cannot do inverse")
         return
     ws = xTx.I * (xMat.T * (weights * yMat))
     return testPoint * ws
@@ -63,7 +63,7 @@ def ridgeRegres(xMat,yMat,lam=0.2):
     xTx = xMat.T*xMat
     denom = xTx + eye(shape(xMat)[1])*lam
     if linalg.det(denom) == 0.0:
-        print "This matrix is singular, cannot do inverse"
+        print("This matrix is singular, cannot do inverse")
         return
     ws = denom.I * (xMat.T*yMat)
     return ws
@@ -96,10 +96,9 @@ def stageWise(xArr,yArr,eps=0.01,numIt=100):
     yMat = yMat - yMean     #can also regularize ys but will get smaller coef
     xMat = regularize(xMat)
     m,n=shape(xMat)
-    #returnMat = zeros((numIt,n)) #testing code remove
     ws = zeros((n,1)); wsTest = ws.copy(); wsMax = ws.copy()
     for i in range(numIt):
-        print ws.T
+        # print(ws.T)
         lowestError = inf; 
         for j in range(n):
             for sign in [-1,1]:
@@ -111,8 +110,7 @@ def stageWise(xArr,yArr,eps=0.01,numIt=100):
                     lowestError = rssE
                     wsMax = wsTest
         ws = wsMax.copy()
-        #returnMat[i,:]=ws.T
-    #return returnMat
+    return ws.T
 
 #def scrapePage(inFile,outFile,yr,numPce,origPrc):
 #    from BeautifulSoup import BeautifulSoup
@@ -145,7 +143,7 @@ def stageWise(xArr,yArr,eps=0.01,numIt=100):
     
 from time import sleep
 import json
-import urllib2
+# import urllib2
 def searchForSet(retX, retY, setNum, yr, numPce, origPrc):
     sleep(10)
     myAPIstr = 'AIzaSyD2cR2KFyx12hXu6PFU-wrWot3NXvko8vY'
@@ -162,10 +160,10 @@ def searchForSet(retX, retY, setNum, yr, numPce, origPrc):
             for item in listOfInv:
                 sellingPrice = item['price']
                 if  sellingPrice > origPrc * 0.5:
-                    print "%d\t%d\t%d\t%f\t%f" % (yr,numPce,newFlag,origPrc, sellingPrice)
+                    print("%d\t%d\t%d\t%f\t%f" % (yr,numPce,newFlag,origPrc, sellingPrice))
                     retX.append([yr, numPce, newFlag, origPrc])
                     retY.append(sellingPrice)
-        except: print 'problem with item %d' % i
+        except: print('problem with item %d' % i)
     
 def setDataCollect(retX, retY):
     searchForSet(retX, retY, 8288, 2006, 800, 49.99)
@@ -208,5 +206,25 @@ def crossValidation(xArr,yArr,numVal=10):
     xMat = mat(xArr); yMat=mat(yArr).T
     meanX = mean(xMat,0); varX = var(xMat,0)
     unReg = bestWeights/varX
-    print "the best model from Ridge Regression is:\n",unReg
-    print "with constant term: ",-1*sum(multiply(meanX,unReg)) + mean(yMat)
+    print("the best model from Ridge Regression is:\n",unReg)
+    print("with constant term: ",-1*sum(multiply(meanX,unReg)) + mean(yMat))
+
+if __name__ == "__main__":
+    # datamat,labelmat=loadDataSet('ex0.txt')
+    datamat,labelmat=loadDataSet('abalone.txt')
+    # print(datamat,labelmat)
+
+    # ws=standRegres(datamat,labelmat)
+    # y=datamat*ws
+    # corr=corrcoef(y.T,labelmat)
+    # print(ws,corr)
+
+    # y=lwlr(0.11,datamat,labelmat,0.1)
+    # print(y) 
+
+    # rw=ridgeTest(datamat,labelmat)
+    # ws=ridgeRegres(mat(datamat),mat(labelmat).T,0.01)
+    # print(ws)
+
+    ws=stageWise(datamat,labelmat,0.001,5000)
+    print(ws)

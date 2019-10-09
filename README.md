@@ -263,6 +263,98 @@ def classifyVector(inX, weights):
     else: return 0.0
 ```
 
+## SVN
+
+## Linear Regression
+
+### Ordinary Least Squares Methods
+
+```
+err=sum(yi-xi.T*w)^2
+w=(X.T*X)^-1*X.T*y #min err
+
+y=x*w
+```
+
+```py
+def standRegres(xData,yArr):
+    xMat = mat(xData); yMat = mat(yArr).T
+    xTx = xMat.T*xMat
+    if linalg.det(xTx) == 0.0:
+        print("This matrix is singular, cannot do inverse")
+        return
+    ws = xTx.I * (xMat.T*yMat)
+    return ws
+
+y=xData*ws
+corr=corrcoef(y.T,yArr)
+```
+
+### Locally Weighted Linear Regression
+
+
+`w=(X.T*W*X)^-1*X.T*W*y`
+
+
+```py
+def lwlr(testPoint,xData,yArr,k=1.0): # k smaller near point weight biger
+    xMat = mat(xData); yMat = mat(yArr).T
+    m = shape(xMat)[0]
+    weights = mat(eye((m)))
+    for j in range(m):                      #next 2 lines create weights matrix
+        diffMat = testPoint - xMat[j,:]     #
+        weights[j,j] = exp(diffMat*diffMat.T/(-2.0*k**2))
+    xTx = xMat.T * (weights * xMat)
+    if linalg.det(xTx) == 0.0:
+        print("This matrix is singular, cannot do inverse")
+        return
+    ws = xTx.I * (xMat.T * (weights * yMat))
+    return testPoint * ws
+```
+
+### Ridge Regression
+
+feature > sample
+
+`w=(X.T*X+lamda*I)^-1*X.T*y`
+
+```py
+def ridgeRegres(xMat,yMat,lam=0.2):# xMat=mat(xData) yMat=mat(yArr).T
+    xTx = xMat.T*xMat
+    denom = xTx + eye(shape(xMat)[1])*lam
+    if linalg.det(denom) == 0.0:
+        print("This matrix is singular, cannot do inverse")
+        return
+    ws = denom.I * (xMat.T*yMat)
+    return ws
+```
+
+### Stage Regres
+
+```py
+def stageWise(xArr,yArr,eps=0.01,numIt=100):
+    xMat = mat(xArr); yMat=mat(yArr).T
+    yMean = mean(yMat,0)
+    yMat = yMat - yMean     #can also regularize ys but will get smaller coef
+    xMat = regularize(xMat)
+    m,n=shape(xMat)
+    ws = zeros((n,1)); wsTest = ws.copy(); wsMax = ws.copy()
+    for i in range(numIt):
+        # print(ws.T)
+        lowestError = inf; 
+        for j in range(n):
+            for sign in [-1,1]:
+                wsTest = ws.copy()
+                wsTest[j] += eps*sign
+                yTest = xMat*wsTest
+                rssE = rssError(yMat.A,yTest.A)
+                if rssE < lowestError:
+                    lowestError = rssE
+                    wsMax = wsTest
+        ws = wsMax.copy()
+    return ws.T
+```
+
 ## kMeans
 
 1. for each data point assign it to the closest centroid
@@ -337,4 +429,25 @@ def biKmeans(dataSet, k, distMeas=distEclud):
     return mat(centList), clusterAssment
 ```
 
+## PCA
 
+```py
+def pca(dataMat, topNfeat=9999999):
+    meanVals = mean(dataMat, axis=0)
+    meanRemoved = dataMat - meanVals #remove mean
+    covMat = cov(meanRemoved, rowvar=0)
+    eigVals,eigVects = linalg.eig(mat(covMat))
+    eigValInd = argsort(eigVals)            #sort, sort goes smallest to largest
+    eigValInd = eigValInd[:-(topNfeat+1):-1]  #cut off unwanted dimensions
+    redEigVects = eigVects[:,eigValInd]       #reorganize eig vects largest to smallest
+    lowDDataMat = meanRemoved * redEigVects #transform data into new dimensions
+    reconMat = (lowDDataMat * redEigVects.T) + meanVals
+    return lowDDataMat, reconMat
+```
+
+## SVD
+
+```
+U,Sigma,VT=svd(datamat)
+lowdatamat=Uk*Sigmak*VTk
+```
