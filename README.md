@@ -514,3 +514,15 @@ def recommend(dataMat, user, N=3, simMeas=cosSim, estMethod=standEst):
         itemScores.append((item, estimatedScore))
     return sorted(itemScores, key=lambda jj: jj[1], reverse=True)[:N]
 ```
+
+### Image Compress
+
+```py
+def imgCompress(dataMat,numSV=3):
+    U,Sigma,VT = la.svd(dataMat)
+    SigRecon = mat(zeros((numSV, numSV)))
+    for k in range(numSV):#construct diagonal matrix from vector
+        SigRecon[k,k] = Sigma[k]
+    
+    reconMat = U[:,:numSV]*SigRecon*VT[:numSV,:]
+```

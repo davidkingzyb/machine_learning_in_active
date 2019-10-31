@@ -93,11 +93,13 @@ def recommend(dataMat, user, N=3, simMeas=cosSim, estMethod=standEst):
 
 def printMat(inMat, thresh=0.8):
     for i in range(32):
+        line=''
         for k in range(32):
             if float(inMat[i,k]) > thresh:
-                print(1),
-            else: print(0),
-        print('')
+                line+='1'
+            else: 
+                line+='0'
+        print(line)
 
 def imgCompress(numSV=3, thresh=0.8):
     myl = []
@@ -111,12 +113,15 @@ def imgCompress(numSV=3, thresh=0.8):
     printMat(myMat, thresh)
     U,Sigma,VT = la.svd(myMat)
     SigRecon = mat(zeros((numSV, numSV)))
+    print(shape(U),shape(Sigma),shape(VT))
     for k in range(numSV):#construct diagonal matrix from vector
         SigRecon[k,k] = Sigma[k]
+    print(shape(U[:,:numSV]),shape(SigRecon),shape(VT[:numSV,:]))
     reconMat = U[:,:numSV]*SigRecon*VT[:numSV,:]
     print("****reconstructed matrix using %d singular values******" % numSV)
     printMat(reconMat, thresh)
 
 if __name__=='__main__':
-    result=recommend(mat(loadExData()),2)
-    print(result)
+    # result=recommend(mat(loadExData()),2)
+    # print(result)
+    imgCompress()
