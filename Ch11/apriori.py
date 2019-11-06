@@ -6,7 +6,14 @@ Ch 11 code
 from numpy import *
 
 def loadDataSet():
-    return [[1, 3, 4], [2, 3, 5], [1, 2, 3, 5], [2, 5]]
+    simpDat = [['r', 'z', 'h', 'j', 'p'],
+               ['z', 'y', 'x', 'w', 'v', 'u', 't', 's'],
+               ['z'],
+               ['r', 'x', 'n', 'o', 's'],
+               ['y', 'r', 'x', 'z', 'q', 't', 'p'],
+               ['y', 'z', 'x', 'e', 'q', 's', 't', 'm']]
+    return simpDat
+    # return [[1, 3, 4], [2, 3, 5], [1, 2, 3, 5], [2, 5]]
 
 def createC1(dataSet):
     C1 = []
@@ -61,7 +68,7 @@ def apriori(dataSet, minSupport = 0.5):
         k += 1
     return L, supportData # [[Ck>minSupport],] , {set:support}
 
-def generateRules(L, supportData, minConf=0.7):  #supportData is a dict coming from scanD
+def generateRules(L, supportData, minConf=0.5):  #supportData is a dict coming from scanD
     bigRuleList = []
     for i in range(1, len(L)):#only get the sets with two or more items
         for freqSet in L[i]:
@@ -73,7 +80,7 @@ def generateRules(L, supportData, minConf=0.7):  #supportData is a dict coming f
                 calcConf(freqSet, H1, supportData, bigRuleList, minConf)
     return bigRuleList         
 
-def calcConf(freqSet, H, supportData, brl, minConf=0.7):
+def calcConf(freqSet, H, supportData, brl, minConf=0.5):
     prunedH = [] #create new list to return
     for conseq in H:
         conf = supportData[freqSet]/supportData[freqSet-conseq] #calc confidence
@@ -83,7 +90,7 @@ def calcConf(freqSet, H, supportData, brl, minConf=0.7):
             prunedH.append(conseq)
     return prunedH
 
-def rulesFromConseq(freqSet, H, supportData, brl, minConf=0.7):
+def rulesFromConseq(freqSet, H, supportData, brl, minConf=0.5):
     m = len(H[0])
     if (len(freqSet) > (m + 1)): #try further merging
         Hmp1 = aprioriGen(H, m+1)#create Hm+1 new candidates
@@ -154,17 +161,17 @@ def rulesFromConseq(freqSet, H, supportData, brl, minConf=0.7):
 #     return transDict, itemMeaning
 
 if __name__=='__main__':
-    # datamat=loadDataSet()
-    # print(datamat)
-    # L,supportData=apriori(datamat)
-    # print('L',L)
-    # print('supportData',supportData)
-    # rules=generateRules(L,supportData)
-    # print('rules',rules)
-
-    mushdatamat=[line.split() for line in open('mushroom.dat').readlines()]
-    L,supportData=apriori(mushdatamat)
+    datamat=loadDataSet()
+    print(datamat)
+    L,supportData=apriori(datamat)
     print('L',L)
-    # print('supportData',supportData)
-    rules=generateRules(L,supportData,0.99)
-    # print('rules',rules) 
+    print('supportData',supportData)
+    rules=generateRules(L,supportData)
+    print('rules',rules)
+
+    # mushdatamat=[line.split() for line in open('mushroom.dat').readlines()]
+    # L,supportData=apriori(mushdatamat)
+    # print('L',L)
+    # # print('supportData',supportData)
+    # rules=generateRules(L,supportData,0.99)
+    # # print('rules',rules) 
