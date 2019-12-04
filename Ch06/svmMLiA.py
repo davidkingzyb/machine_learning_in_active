@@ -49,12 +49,18 @@ def smoSimple(dataMatIn, classLabels, C, toler, maxIter):
                 else:
                     L = max(0, alphas[j] + alphas[i] - C)
                     H = min(C, alphas[j] + alphas[i])
-                if L==H: print("L==H"); continue
+                if L==H: 
+                    # print("L==H")
+                    continue
                 eta = 2.0 * dataMatrix[i,:]*dataMatrix[j,:].T - dataMatrix[i,:]*dataMatrix[i,:].T - dataMatrix[j,:]*dataMatrix[j,:].T
-                if eta >= 0: print("eta>=0"); continue
+                if eta >= 0: 
+                    # print("eta>=0")
+                    continue
                 alphas[j] -= labelMat[j]*(Ei - Ej)/eta
                 alphas[j] = clipAlpha(alphas[j],H,L)
-                if (abs(alphas[j] - alphaJold) < 0.00001): print("j not moving enough"); continue
+                if (abs(alphas[j] - alphaJold) < 0.00001): 
+                    # print("j not moving enough") 
+                    continue
                 alphas[i] += labelMat[j]*labelMat[i]*(alphaJold - alphas[j])#update i by the same amount as j
                                                                         #the update is in the oppostie direction
                 b1 = b - Ei- labelMat[i]*(alphas[i]-alphaIold)*dataMatrix[i,:]*dataMatrix[i,:].T - labelMat[j]*(alphas[j]-alphaJold)*dataMatrix[i,:]*dataMatrix[j,:].T
@@ -63,10 +69,10 @@ def smoSimple(dataMatIn, classLabels, C, toler, maxIter):
                 elif (0 < alphas[j]) and (C > alphas[j]): b = b2
                 else: b = (b1 + b2)/2.0
                 alphaPairsChanged += 1
-                print("iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
+                # print("iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
         if (alphaPairsChanged == 0): iter += 1
         else: iter = 0
-        print("iteration number: %d" % iter)
+        # print("iteration number: %d" % iter)
     return b,alphas
 
 def kernelTrans(X, A, kTup): #calc the kernel or transform data to a higher dimensional space
@@ -133,13 +139,19 @@ def innerL(i, oS):
         else:
             L = max(0, oS.alphas[j] + oS.alphas[i] - oS.C)
             H = min(oS.C, oS.alphas[j] + oS.alphas[i])
-        if L==H: print("L==H"); return 0
+        if L==H: 
+            # print("L==H") 
+            return 0
         eta = 2.0 * oS.K[i,j] - oS.K[i,i] - oS.K[j,j] #changed for kernel
-        if eta >= 0: print("eta>=0"); return 0
+        if eta >= 0: 
+            # print("eta>=0")
+            return 0
         oS.alphas[j] -= oS.labelMat[j]*(Ei - Ej)/eta
         oS.alphas[j] = clipAlpha(oS.alphas[j],H,L)
         updateEk(oS, j) #added this for the Ecache
-        if (abs(oS.alphas[j] - alphaJold) < 0.00001): print("j not moving enough"); return 0
+        if (abs(oS.alphas[j] - alphaJold) < 0.00001): 
+            # print("j not moving enough")
+            return 0
         oS.alphas[i] += oS.labelMat[j]*oS.labelMat[i]*(alphaJold - oS.alphas[j])#update i by the same amount as j
         updateEk(oS, i) #added this for the Ecache                    #the update is in the oppostie direction
         b1 = oS.b - Ei- oS.labelMat[i]*(oS.alphas[i]-alphaIold)*oS.K[i,i] - oS.labelMat[j]*(oS.alphas[j]-alphaJold)*oS.K[i,j]
@@ -159,17 +171,17 @@ def smoP(dataMatIn, classLabels, C, toler, maxIter,kTup=('lin', 0)):    #full Pl
         if entireSet:   #go over all
             for i in range(oS.m):        
                 alphaPairsChanged += innerL(i,oS)
-                print("fullSet, iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
+                # print("fullSet, iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
             iter += 1
         else:#go over non-bound (railed) alphas
             nonBoundIs = nonzero((oS.alphas.A > 0) * (oS.alphas.A < C))[0]
             for i in nonBoundIs:
                 alphaPairsChanged += innerL(i,oS)
-                print("non-bound, iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
+                # print("non-bound, iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
             iter += 1
         if entireSet: entireSet = False #toggle entire set loop
         elif (alphaPairsChanged == 0): entireSet = True  
-        print("iteration number: %d" % iter)
+        # print("iteration number: %d" % iter)
     return oS.b,oS.alphas
 
 def calcWs(alphas,dataArr,classLabels):
@@ -188,6 +200,7 @@ def testRbf(k1=1.3):
     sVs=datMat[svInd] #get matrix of only support vectors
     labelSV = labelMat[svInd];
     print("there are %d Support Vectors" % shape(sVs)[0])
+    print('sVs',sVs,'labelSV',labelSV,'svInd',svInd)
     m,n = shape(datMat)
     errorCount = 0
     for i in range(m):
@@ -347,7 +360,18 @@ def smoPK(dataMatIn, classLabels, C, toler, maxIter):    #full Platt SMO
     return oS.b,oS.alphas
 
 if __name__ == '__main__':
-    dataArr,labelArr=loadDataSet('testSet.txt')
-    print(dataArr,labelArr)
-    b,alphas=smoSimple(dataArr,labelArr,0.6,0.001,40)
-    print(b,alphas)
+    # dataMat,labelArr=loadDataSet('testSet.txt')
+    # # print(dataMat,labelArr)
+    # # b,alphas=smoSimple(dataMat,labelArr,0.6,0.001,40)
+    # b,alphas=smoP(dataMat,labelArr,0.6,0.001,40)
+    # print('b',b)
+    # for i in range(len(alphas)):
+    #     if alphas[i]>0:
+    #         print('sv',i,dataMat[i],labelArr[i],'alpha',alphas[i])
+    # w=calcWs(alphas,dataMat,labelArr)
+    # print('w',w)
+    # p0=dataMat[0]*mat(w)+b
+    # print('p0',p0,labelArr[0])
+
+    # testRbf()
+    testDigits()
