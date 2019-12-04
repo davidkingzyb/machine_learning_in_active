@@ -265,6 +265,278 @@ def classifyVector(inX, weights):
 
 ## SVN
 
+### simple SMO
+
+```py
+def selectJrand(i,m):
+    j=i #we want to select any J not equal to i
+    while (j==i):
+        j = int(random.uniform(0,m))
+    return j
+
+def clipAlpha(aj,H,L):
+    if aj > H: 
+        aj = H
+    if L > aj:
+        aj = L
+    return aj
+
+def smoSimple(dataMatIn, classLabels, C, toler, maxIter):
+    """
+    C:float bigger err less overfitting, C smaller margin bigger
+    toler:float max error
+    """
+    dataMatrix = mat(dataMatIn); labelMat = mat(classLabels).transpose()
+    b = 0; m,n = shape(dataMatrix)
+    alphas = mat(zeros((m,1)))
+    iter = 0
+    while (iter < maxIter):
+        alphaPairsChanged = 0
+        for i in range(m):
+            fXi = float(multiply(alphas,labelMat).T*(dataMatrix*dataMatrix[i,:].T)) + b
+            Ei = fXi - float(labelMat[i])#if checks if an example violates KKT conditions
+            if ((labelMat[i]*Ei < -toler) and (alphas[i] < C)) or ((labelMat[i]*Ei > toler) and (alphas[i] > 0)):
+                j = selectJrand(i,m)
+                fXj = float(multiply(alphas,labelMat).T*(dataMatrix*dataMatrix[j,:].T)) + b
+                Ej = fXj - float(labelMat[j])
+                alphaIold = alphas[i].copy(); alphaJold = alphas[j].copy();
+                if (labelMat[i] != labelMat[j]):
+                    L = max(0, alphas[j] - alphas[i])
+                    H = min(C, C + alphas[j] - alphas[i])
+                else:
+                    L = max(0, alphas[j] + alphas[i] - C)
+                    H = min(C, alphas[j] + alphas[i])
+                if L==H: print("L==H"); continue
+                eta = 2.0 * dataMatrix[i,:]*dataMatrix[j,:].T - dataMatrix[i,:]*dataMatrix[i,:].T - dataMatrix[j,:]*dataMatrix[j,:].T
+                if eta >= 0: print("eta>=0"); continue
+                alphas[j] -= labelMat[j]*(Ei - Ej)/eta
+                alphas[j] = clipAlpha(alphas[j],H,L)
+                if (abs(alphas[j] - alphaJold) < 0.00001): 
+                    print("j not moving enough") 
+                    continue
+                alphas[i] += labelMat[j]*labelMat[i]*(alphaJold - alphas[j])#update i by the same amount as j
+                                                                        #the update is in the oppostie direction
+                b1 = b - Ei- labelMat[i]*(alphas[i]-alphaIold)*dataMatrix[i,:]*dataMatrix[i,:].T - labelMat[j]*(alphas[j]-alphaJold)*dataMatrix[i,:]*dataMatrix[j,:].T
+                b2 = b - Ej- labelMat[i]*(alphas[i]-alphaIold)*dataMatrix[i,:]*dataMatrix[j,:].T - labelMat[j]*(alphas[j]-alphaJold)*dataMatrix[j,:]*dataMatrix[j,:].T
+                if (0 < alphas[i]) and (C > alphas[i]): b = b1
+                elif (0 < alphas[j]) and (C > alphas[j]): b = b2
+                else: b = (b1 + b2)/2.0
+                alphaPairsChanged += 1
+                print("iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
+        if (alphaPairsChanged == 0): iter += 1
+        else: iter = 0
+        print("iteration number: %d" % iter)
+    return b,alphas#alphas[i]>0  i is support vecter
+
+def calcWs(alphas,dataArr,classLabels):
+    X = mat(dataArr); labelMat = mat(classLabels).transpose()
+    m,n = shape(X)
+    w = zeros((n,1))
+    for i in range(m):
+        w += multiply(alphas[i]*labelMat[i],X[i,:].T)
+    return w
+
+p0=dataMat[0]*mat(w)+b
+```
+
+### Platt SMO
+
+```py
+def kernelTrans(X, A, kTup): #calc the kernel or transform data to a higher dimensional space
+    m,n = shape(X)
+    K = mat(zeros((m,1)))
+    if kTup[0]=='lin': K = X * A.T   #linear kernel
+    elif kTup[0]=='rbf':
+        for j in range(m):
+            deltaRow = X[j,:] - A
+            K[j] = deltaRow*deltaRow.T
+        K = exp(K/(-1*kTup[1]**2)) #divide in NumPy is element-wise not matrix like Matlab
+    else: raise NameError('Houston We Have a Problem -- \
+    That Kernel is not recognized')
+    return K
+
+class optStruct:
+    def __init__(self,dataMatIn, classLabels, C, toler, kTup):  # Initialize the structure with the parameters 
+        self.X = dataMatIn
+        self.labelMat = classLabels
+        self.C = C
+        self.tol = toler
+        self.m = shape(dataMatIn)[0]
+        self.alphas = mat(zeros((self.m,1)))
+        self.b = 0
+        self.eCache = mat(zeros((self.m,2))) #first column is valid flag
+        self.K = mat(zeros((self.m,self.m)))
+        for i in range(self.m):
+            self.K[:,i] = kernelTrans(self.X, self.X[i,:], kTup)
+        
+def calcEk(oS, k):
+    fXk = float(multiply(oS.alphas,oS.labelMat).T*oS.K[:,k] + oS.b)
+    Ek = fXk - float(oS.labelMat[k])
+    return Ek
+        
+def selectJ(i, oS, Ei):         #this is the second choice -heurstic, and calcs Ej
+    maxK = -1; maxDeltaE = 0; Ej = 0
+    oS.eCache[i] = [1,Ei]  #set valid #choose the alpha that gives the maximum delta E
+    validEcacheList = nonzero(oS.eCache[:,0].A)[0]
+    if (len(validEcacheList)) > 1:
+        for k in validEcacheList:   #loop through valid Ecache values and find the one that maximizes delta E
+            if k == i: continue #don't calc for i, waste of time
+            Ek = calcEk(oS, k)
+            deltaE = abs(Ei - Ek)
+            if (deltaE > maxDeltaE):
+                maxK = k; maxDeltaE = deltaE; Ej = Ek
+        return maxK, Ej
+    else:   #in this case (first time around) we don't have any valid eCache values
+        j = selectJrand(i, oS.m)
+        Ej = calcEk(oS, j)
+    return j, Ej
+
+def updateEk(oS, k):#after any alpha has changed update the new value in the cache
+    Ek = calcEk(oS, k)
+    oS.eCache[k] = [1,Ek]
+        
+def innerL(i, oS):
+    Ei = calcEk(oS, i)
+    if ((oS.labelMat[i]*Ei < -oS.tol) and (oS.alphas[i] < oS.C)) or ((oS.labelMat[i]*Ei > oS.tol) and (oS.alphas[i] > 0)):
+        j,Ej = selectJ(i, oS, Ei) #this has been changed from selectJrand
+        alphaIold = oS.alphas[i].copy(); alphaJold = oS.alphas[j].copy();
+        if (oS.labelMat[i] != oS.labelMat[j]):
+            L = max(0, oS.alphas[j] - oS.alphas[i])
+            H = min(oS.C, oS.C + oS.alphas[j] - oS.alphas[i])
+        else:
+            L = max(0, oS.alphas[j] + oS.alphas[i] - oS.C)
+            H = min(oS.C, oS.alphas[j] + oS.alphas[i])
+        if L==H: 
+            # print("L==H") 
+            return 0
+        eta = 2.0 * oS.K[i,j] - oS.K[i,i] - oS.K[j,j] #changed for kernel
+        if eta >= 0: 
+            # print("eta>=0")
+            return 0
+        oS.alphas[j] -= oS.labelMat[j]*(Ei - Ej)/eta
+        oS.alphas[j] = clipAlpha(oS.alphas[j],H,L)
+        updateEk(oS, j) #added this for the Ecache
+        if (abs(oS.alphas[j] - alphaJold) < 0.00001): 
+            # print("j not moving enough")
+            return 0
+        oS.alphas[i] += oS.labelMat[j]*oS.labelMat[i]*(alphaJold - oS.alphas[j])#update i by the same amount as j
+        updateEk(oS, i) #added this for the Ecache                    #the update is in the oppostie direction
+        b1 = oS.b - Ei- oS.labelMat[i]*(oS.alphas[i]-alphaIold)*oS.K[i,i] - oS.labelMat[j]*(oS.alphas[j]-alphaJold)*oS.K[i,j]
+        b2 = oS.b - Ej- oS.labelMat[i]*(oS.alphas[i]-alphaIold)*oS.K[i,j]- oS.labelMat[j]*(oS.alphas[j]-alphaJold)*oS.K[j,j]
+        if (0 < oS.alphas[i]) and (oS.C > oS.alphas[i]): oS.b = b1
+        elif (0 < oS.alphas[j]) and (oS.C > oS.alphas[j]): oS.b = b2
+        else: oS.b = (b1 + b2)/2.0
+        return 1
+    else: return 0
+
+def smoP(dataMatIn, classLabels, C, toler, maxIter,kTup=('lin', 0)):    #full Platt SMO
+    oS = optStruct(mat(dataMatIn),mat(classLabels).transpose(),C,toler, kTup)
+    iter = 0
+    entireSet = True; alphaPairsChanged = 0
+    while (iter < maxIter) and ((alphaPairsChanged > 0) or (entireSet)):
+        alphaPairsChanged = 0
+        if entireSet:   #go over all
+            for i in range(oS.m):        
+                alphaPairsChanged += innerL(i,oS)
+                # print("fullSet, iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
+            iter += 1
+        else:#go over non-bound (railed) alphas
+            nonBoundIs = nonzero((oS.alphas.A > 0) * (oS.alphas.A < C))[0]
+            for i in nonBoundIs:
+                alphaPairsChanged += innerL(i,oS)
+                # print("non-bound, iter: %d i:%d, pairs changed %d" % (iter,i,alphaPairsChanged))
+            iter += 1
+        if entireSet: entireSet = False #toggle entire set loop
+        elif (alphaPairsChanged == 0): entireSet = True  
+        # print("iteration number: %d" % iter)
+    return oS.b,oS.alphas
+
+datMat=mat(dataMatIn)
+labelMat = mat(classLabels).transpose()
+svInd=nonzero(alphas.A>0)[0]# support vecters index
+sVs=datMat[svInd] # get matrix of only support vectors
+labelSV = labelMat[svInd] #support vecters labels
+m,n = shape(datMat)
+errorCount = 0
+for i in range(m):
+    kernelEval = kernelTrans(sVs,datMat[i,:],('rbf', k1))
+    predict=kernelEval.T * multiply(labelSV,alphas[svInd]) + b # predict
+    if sign(predict)!=sign(classLabels[i]): errorCount += 1
+```
+
+## AdaBoost
+
+```py
+def stumpClassify(dataMatrix,dimen,threshVal,threshIneq):#just classify the data
+    retArray = ones((shape(dataMatrix)[0],1))
+    if threshIneq == 'lt':
+        retArray[dataMatrix[:,dimen] <= threshVal] = -1.0
+    else:
+        retArray[dataMatrix[:,dimen] > threshVal] = -1.0
+    # print('retArray',retArray)#
+    return retArray
+
+def buildStump(dataArr,classLabels,D):
+    dataMatrix = mat(dataArr); labelMat = mat(classLabels).T
+    m,n = shape(dataMatrix)
+    numSteps = 10.0; bestStump = {}; bestClasEst = mat(zeros((m,1)))
+    minError = inf #init error sum, to +infinity
+    for i in range(n):#loop over all dimensions
+        rangeMin = dataMatrix[:,i].min(); rangeMax = dataMatrix[:,i].max();
+        stepSize = (rangeMax-rangeMin)/numSteps
+        for j in range(-1,int(numSteps)+1):#loop over all range in current dimension
+            for inequal in ['lt', 'gt']: #go over less than and greater than
+                threshVal = (rangeMin + float(j) * stepSize)
+                predictedVals = stumpClassify(dataMatrix,i,threshVal,inequal)#call stump classify with i, j, lessThan
+                errArr = mat(ones((m,1)))
+                errArr[predictedVals == labelMat] = 0
+                weightedError = D.T*errArr  #calc total error multiplied by D
+                # print("split: dim %d, thresh %.2f, thresh ineqal: %s, the weighted error is %.3f" % (i, threshVal, inequal, weightedError))
+                if weightedError < minError:
+                    minError = weightedError
+                    bestClasEst = predictedVals.copy()
+                    bestStump['dim'] = i
+                    bestStump['thresh'] = threshVal
+                    bestStump['ineq'] = inequal
+    return bestStump,minError,bestClasEst
+
+def adaBoostTrainDS(dataArr,classLabels,numIt=40):
+    weakClassArr = []
+    m = shape(dataArr)[0]
+    D = mat(ones((m,1))/m)   #init D to all equal
+    aggClassEst = mat(zeros((m,1)))
+    for i in range(numIt):
+        bestStump,error,classEst = buildStump(dataArr,classLabels,D)#build Stump
+        # print("D:",D.T)
+        alpha = float(0.5*log((1.0-error)/max(error,1e-16)))#calc alpha, throw in max(error,eps) to account for error=0
+        bestStump['alpha'] = alpha  
+        weakClassArr.append(bestStump)                  #store Stump Params in Array
+        # print("classEst: ",classEst.T)
+        expon = multiply(-1*alpha*mat(classLabels).T,classEst) #exponent for D calc, getting messy
+        D = multiply(D,exp(expon))                              #Calc New D for next iteration
+        D = D/D.sum()
+        #calc training error of all classifiers, if this is 0 quit for loop early (use break)
+        aggClassEst += alpha*classEst
+        # print("aggClassEst: ",aggClassEst.T)
+        aggErrors = multiply(sign(aggClassEst) != mat(classLabels).T,ones((m,1)))
+        errorRate = aggErrors.sum()/m
+        # print("total error: ",errorRate)
+        if errorRate == 0.0: break
+    return weakClassArr,aggClassEst
+
+def adaClassify(datToClass,classifierArr):#dataMat[i],weakClassArr
+    dataMatrix = mat(datToClass)#do stuff similar to last aggClassEst in adaBoostTrainDS
+    m = shape(dataMatrix)[0]
+    aggClassEst = mat(zeros((m,1)))
+    for i in range(len(classifierArr)):
+        classEst = stumpClassify(dataMatrix,classifierArr[i]['dim'],\
+                                 classifierArr[i]['thresh'],\
+                                 classifierArr[i]['ineq'])#call stump classify
+        aggClassEst += classifierArr[i]['alpha']*classEst
+        # print(aggClassEst)
+    return sign(aggClassEst)
+```
+
 ## Linear Regression
 
 ### Ordinary Least Squares Methods
